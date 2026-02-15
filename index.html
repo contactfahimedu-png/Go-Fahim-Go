@@ -3,15 +3,13 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Fahim Survival Optimized</title>
+<title>Fahim Survival Mobile</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;}
 body{
 height:100vh;
 overflow:hidden;
 font-family:Segoe UI;
-cursor:none;
-position:relative;
 background: linear-gradient(to bottom, #87ceeb 0%, #f0f8ff 100%);
 }
 
@@ -40,11 +38,18 @@ font-size:4vw;
 
 #player{
 position:absolute;
-border-radius:50%;
-box-shadow:0 0 20px cyan;
-width:12vw;
+width:15vw;
 touch-action:none;
+border-radius:50%;
+box-shadow:0 0 15px cyan;
 }
+
+.enemy, .health, .minus{
+position:absolute;
+border-radius:50%;
+}
+.enemy{width:12vw;}
+.health, .minus{width:10vw;}
 
 .center{
 position:absolute;
@@ -73,7 +78,6 @@ display:none;
 justify-content:center;
 align-items:center;
 flex-direction:column;
-border-radius:10px;
 text-align:center;
 }
 
@@ -118,7 +122,6 @@ font-size:6vw;
 <audio id="bgMusic" src="bgmusic.mp3" loop></audio>
 
 <script>
-// -------- GAME STATE --------
 let score=0, lives=3, maxLives=5, gameActive=false;
 let highScore=localStorage.getItem("highScore")||0;
 document.getElementById("highScore").innerText=highScore;
@@ -130,7 +133,9 @@ const minusSound=document.getElementById("minusSound");
 const bgMusic=document.getElementById("bgMusic");
 bgMusic.volume=0.3;
 
-let objects = []; // all enemies, health, minus
+let objects = [];
+const maxEnemies=5, maxHealth=2, maxMinus=1;
+const baseFallSpeed=2;
 
 // -------- PLAYER START POSITION --------
 function setPlayerStart(){
@@ -149,7 +154,7 @@ function updatePlayerPosition(){
     player.style.transform = `translate(${player.x}px, ${player.y}px)`;
 }
 
-// -------- TOUCH DRAG --------
+// -------- TOUCH DRAG & PC DRAG --------
 let dragging=false;
 player.addEventListener('touchstart', e=>{dragging=true; e.preventDefault();});
 player.addEventListener('touchend', e=>{dragging=false;});
@@ -162,6 +167,15 @@ player.addEventListener('touchmove', e=>{
     updatePlayerPosition();
     e.preventDefault();
 });
+document.addEventListener('mousedown', e=>{dragging=true;});
+document.addEventListener('mouseup', e=>{dragging=false;});
+document.addEventListener('mousemove', e=>{
+    if(!dragging || !gameActive) return;
+    player.x = e.pageX - player.width/2;
+    player.y = e.pageY - player.height/2;
+    constrainPlayer();
+    updatePlayerPosition();
+});
 
 // -------- CONSTRAINT --------
 function constrainPlayer(){
@@ -169,28 +183,24 @@ function constrainPlayer(){
     player.y = Math.max(0, Math.min(window.innerHeight - player.height, player.y));
 }
 
-// -------- SPAWN OBJECTS --------
-const maxEnemies=5, maxHealth=2, maxMinus=1;
-const baseFallSpeed=2;
-
+// -------- SPAWN FUNCTIONS --------
 function spawnEnemy(){
     if(objects.filter(o=>o.type==='enemy').length >= maxEnemies) return;
     let el = document.createElement("img");
     el.src="fahim2.png"; el.className="enemy"; document.body.appendChild(el);
-    objects.push({el,type:'enemy',x:Math.random()*(window.innerWidth-60),y:-60,speed:baseFallSpeed*getSpeedMultiplier()});
+    objects.push({el,type:'enemy',x:Math.random()*(window.innerWidth-80),y:-80,speed:baseFallSpeed*getSpeedMultiplier()});
 }
 function spawnHealth(){
     if(objects.filter(o=>o.type==='health').length >= maxHealth) return;
     let el=document.createElement("img"); el.src="health.png"; el.className="health"; document.body.appendChild(el);
-    objects.push({el,type:'health',x:Math.random()*(window.innerWidth-50),y:-50,speed:baseFallSpeed});
+    objects.push({el,type:'health',x:Math.random()*(window.innerWidth-60),y:-60,speed:baseFallSpeed});
 }
 function spawnMinus(){
     if(objects.filter(o=>o.type==='minus').length >= maxMinus) return;
     let el=document.createElement("img"); el.src="minus.png"; el.className="minus"; document.body.appendChild(el);
-    objects.push({el,type:'minus',x:Math.random()*(window.innerWidth-50),y:-50,speed:baseFallSpeed});
+    objects.push({el,type:'minus',x:Math.random()*(window.innerWidth-60),y:-60,speed:baseFallSpeed});
 }
 
-// -------- SPEED MULTIPLIER --------
 function getSpeedMultiplier(){
     if(score>=30) return 2.5;
     if(score>=20) return 2;
@@ -207,27 +217,15 @@ function checkCollision(a,b){
 }
 
 // -------- LIFE HANDLERS --------
-function gainLife(){
-    if(lives<maxLives){lives++; document.getElementById("lives").innerText=lives; healthSound.play();}
-}
-function loseLife(){
-    lives--; document.getElementById("lives").innerText=lives; explodeSound.play();
-    if(navigator.vibrate){navigator.vibrate(200);}
-    if(lives<=0) endGame();
-}
-function minusHit(){minusSound.play(); if(navigator.vibrate){navigator.vibrate(300);} endGame();}
-function endGame(){
-    gameActive=false; bgMusic.pause();
-    if(score>highScore){localStorage.setItem("highScore",score);}
-    document.getElementById("finalScore").innerText = score;
-    document.getElementById("overlay").style.display="flex";
-}
+function gainLife(){if(lives<maxLives){lives++; document.getElementById("lives").innerText=lives; healthSound.play();}}
+function loseLife(){lives--; document.getElementById("lives").innerText=lives; explodeSound.play(); if(lives<=0) endGame();}
+function minusHit(){minusSound.play(); endGame();}
+function endGame(){gameActive=false; bgMusic.pause(); if(score>highScore){localStorage.setItem("highScore",score);} document.getElementById("finalScore").innerText=score; document.getElementById("overlay").style.display="flex";}
 
 // -------- GAME LOOP --------
 function gameLoop(){
     if(!gameActive) return;
 
-    // spawn random objects
     if(Math.random()<0.02) spawnEnemy();
     if(Math.random()<0.005) spawnHealth();
     if(Math.random()<0.002) spawnMinus();
@@ -242,7 +240,7 @@ function gameLoop(){
             if(obj.type==='minus') minusHit();
             obj.el.remove();
             objects.splice(index,1);
-        }else if(obj.y>window.innerHeight){
+        } else if(obj.y>window.innerHeight){
             obj.el.remove();
             objects.splice(index,1);
             if(obj.type==='enemy') score++;
