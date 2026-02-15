@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Fahim Sky Survival Mobile</title>
+<title>Fahim Sky Survival</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;}
 body{
@@ -35,6 +35,8 @@ background:rgba(255,255,255,.3);
 backdrop-filter:blur(5px);
 border-radius:10px;
 font-size:14px;
+z-index:10;
+position:relative;
 }
 
 #player{
@@ -42,7 +44,8 @@ width:70px;
 position:absolute;
 border-radius:50%;
 box-shadow:0 0 15px cyan;
-touch-action: none; /* prevent scrolling on drag */
+touch-action: none;
+z-index:5;
 }
 
 .enemy, .health, .minus{
@@ -50,6 +53,7 @@ position:absolute;
 border-radius:50%;
 animation-name:fall;
 animation-timing-function:linear;
+z-index:5;
 }
 .enemy{width:50px;}
 .health, .minus{width:40px;}
@@ -75,6 +79,7 @@ background:#ff004c;
 color:white;
 font-size:16px;
 cursor:pointer;
+z-index:6;
 }
 
 #overlay{
@@ -87,13 +92,37 @@ justify-content:center;
 align-items:center;
 flex-direction:column;
 text-align:center;
+z-index:20;
 }
 
 #overlay h1, #overlay h2{
 color:white;
 font-weight:bold;
-text-shadow: 2px 2px 4px black;
+text-shadow:2px 2px 4px black;
 margin:5px 0;
+}
+
+#rulesScreen{
+position:fixed;
+width:90%;
+max-width:500px;
+background:rgba(255,255,255,0.95);
+border-radius:15px;
+padding:20px;
+top:50%;
+left:50%;
+transform:translate(-50%,-50%);
+text-align:left;
+box-shadow:0 0 20px rgba(0,0,0,0.5);
+z-index:15;
+}
+#rulesScreen h2{
+text-align:center;
+margin-bottom:15px;
+}
+#rulesScreen p{
+margin:5px 0;
+line-height:1.5;
 }
 </style>
 </head>
@@ -109,7 +138,18 @@ margin:5px 0;
 <div>High Score: <span id="highScore">0</span></div>
 </header>
 
-<div class="center" id="startScreen">
+<!-- RULES SCREEN -->
+<div id="rulesScreen">
+<h2>🎮 Game Rules</h2>
+<p>১. প্রথমে ফাহিম এর ছবি টেনে এনে <strong>Start</strong> এর নিচে নিয়ে আসুন।</p>
+<p>২. সারা +১ পয়েন্ট ও লাইফ (MAX 5 লাইফ)</p>
+<p>৩. সাদ -১ পয়েন্ট</p>
+<p>৪. গ্রুপ ছবি গেম ওভার</p>
+<p style="margin-top:10px;font-style:italic;">Developer: Abdullah Fahim</p>
+<button onclick="hideRules()">I Understand / Start</button>
+</div>
+
+<div class="center" id="startScreen" style="display:none;">
 <h1>🌤 Fahim Sky Survival</h1>
 <button onclick="startGame()">Start Game</button>
 </div>
@@ -119,7 +159,7 @@ margin:5px 0;
 <div id="overlay">
 <h1>💀 Game Over</h1>
 <h2>Score: <span id="finalScore"></span></h2>
-<button onclick="location.reload()">Restart</button>
+<button onclick="restartGame()">Restart</button>
 </div>
 
 <audio id="explodeSound" src="explode.mp3"></audio>
@@ -144,37 +184,44 @@ const bgMusic=document.getElementById("bgMusic");
 bgMusic.volume=0.3;
 const baseFallDuration=6;
 
-// --- Drag to move player on mobile ---
+// --- Drag to move player ---
 let dragging=false;
-
-player.addEventListener("touchstart",(e)=>{
-    dragging=true;
-});
-
-player.addEventListener("touchend",(e)=>{
-    dragging=false;
-});
-
+player.addEventListener("touchstart",(e)=>{dragging=true;});
+player.addEventListener("touchend",(e)=>{dragging=false;});
 player.addEventListener("touchmove",(e)=>{
     if(!dragging) return;
-    let touch = e.touches[0];
-    player.style.left = (touch.pageX - player.offsetWidth/2) + "px";
-    player.style.top = (touch.pageY - player.offsetHeight/2) + "px";
+    let touch=e.touches[0];
+    player.style.left=(touch.pageX - player.offsetWidth/2)+"px";
+    player.style.top=(touch.pageY - player.offsetHeight/2)+"px";
     e.preventDefault();
 });
 
-// Also support mouse drag on PC
-player.addEventListener("mousedown",(e)=>{ dragging=true; });
-player.addEventListener("mouseup",(e)=>{ dragging=false; });
+// Mouse support
+player.addEventListener("mousedown",(e)=>{dragging=true;});
+player.addEventListener("mouseup",(e)=>{dragging=false;});
 player.addEventListener("mousemove",(e)=>{
     if(dragging){
-        player.style.left = e.pageX - player.offsetWidth/2 + "px";
-        player.style.top = e.pageY - player.offsetHeight/2 + "px";
+        player.style.left=e.pageX - player.offsetWidth/2 + "px";
+        player.style.top=e.pageY - player.offsetHeight/2 + "px";
     }
 });
 
+// --- RULES CONTROL ---
+let rulesScreen=document.getElementById("rulesScreen");
+let startScreen=document.getElementById("startScreen");
+
+function hideRules(){
+    rulesScreen.style.display="none";
+    startScreen.style.display="block";
+}
+
+function restartGame(){
+    location.reload(); // will automatically show rules again
+}
+
+// --- GAME FUNCTIONS ---
 function startGame(){
-    document.getElementById("startScreen").style.display="none";
+    startScreen.style.display="none";
     player.style.display="block";
     gameActive=true;
     bgMusic.play();
@@ -190,10 +237,10 @@ function getSpeedMultiplier(){
     return 1;
 }
 
-// --- Enemy (-1 life), fewer enemies for mobile ---
+// --- Enemy, Health, Minus ---
 function spawnEnemy(){
     if(!gameActive) return;
-    if(Math.random()<0.6){ // reduce enemy spawn probability
+    if(Math.random()<0.6){
         let enemy=document.createElement("img");
         enemy.src="fahim2.png";
         enemy.className="enemy";
@@ -204,104 +251,70 @@ function spawnEnemy(){
 
         let check=setInterval(()=>{
             if(checkCollision(player,enemy)){
-                enemy.remove();
-                clearInterval(check);
-                loseLife();
+                enemy.remove(); clearInterval(check); loseLife();
             }
         },10);
 
         setTimeout(()=>{
-            enemy.remove();
-            clearInterval(check);
-            if(gameActive){
-                score++;
-                document.getElementById("score").innerText=score;
-            }
+            enemy.remove(); clearInterval(check);
+            if(gameActive){ score++; document.getElementById("score").innerText=score; }
         },duration*1000);
     }
-    setTimeout(spawnEnemy, 1200); // slower spawn for mobile
+    setTimeout(spawnEnemy,1200);
 }
 
-// Health (+1 life)
 function spawnHealth(){
     if(!gameActive) return;
     let item=document.createElement("img");
     item.src="health.png";
     item.className="health";
     item.style.left=Math.random()*(window.innerWidth-40)+"px";
-    let duration = 5;
-    item.style.animationDuration = duration+"s";
+    let duration=5;
+    item.style.animationDuration=duration+"s";
     document.body.appendChild(item);
 
     let check=setInterval(()=>{
         if(checkCollision(player,item)){
-            item.remove();
-            clearInterval(check);
-            gainLife();
+            item.remove(); clearInterval(check); gainLife();
         }
     },10);
 
     setTimeout(()=>{
-        item.remove();
-        clearInterval(check);
-    }, duration*1000);
+        item.remove(); clearInterval(check);
+    },duration*1000);
 
-    setTimeout(spawnHealth, 8000);
+    setTimeout(spawnHealth,8000);
 }
 
-// Minus (instant game over)
 function spawnMinus(){
     if(!gameActive) return;
     let item=document.createElement("img");
     item.src="minus.png";
     item.className="minus";
     item.style.left=Math.random()*(window.innerWidth-40)+"px";
-    let duration = 5;
-    item.style.animationDuration = duration+"s";
+    let duration=5;
+    item.style.animationDuration=duration+"s";
     document.body.appendChild(item);
 
     let check=setInterval(()=>{
         if(checkCollision(player,item)){
-            item.remove();
-            clearInterval(check);
-            minusHit();
+            item.remove(); clearInterval(check); minusHit();
         }
     },10);
 
     setTimeout(()=>{
-        item.remove();
-        clearInterval(check);
-    }, duration*1000);
+        item.remove(); clearInterval(check);
+    },duration*1000);
 
-    setTimeout(spawnMinus, 12000);
+    setTimeout(spawnMinus,12000);
 }
 
-// --- Life functions ---
-function gainLife(){
-    if(lives<maxLives){
-        lives++;
-        document.getElementById("lives").innerText=lives;
-        healthSound.currentTime=0;
-        healthSound.play();
-    }
-}
+// Life functions
+function gainLife(){ if(lives<maxLives){ lives++; document.getElementById("lives").innerText=lives; healthSound.currentTime=0; healthSound.play(); } }
+function loseLife(){ lives--; document.getElementById("lives").innerText=lives; explodeSound.play(); if(navigator.vibrate){navigator.vibrate(200);} if(lives<=0) endGame(); }
+function minusHit(){ minusSound.play(); if(navigator.vibrate){navigator.vibrate(300);} endGame(); }
 
-function loseLife(){
-    lives--;
-    document.getElementById("lives").innerText=lives;
-    explodeSound.play();
-    if(navigator.vibrate){navigator.vibrate(200);}
-    if(lives<=0) endGame();
-}
-
-// Minus = instant game over
-function minusHit(){
-    minusSound.play();
-    if(navigator.vibrate){navigator.vibrate(300);}
-    endGame();
-}
-
-// Collision detection
+// Collision
 function checkCollision(a,b){
     let r1=a.getBoundingClientRect();
     let r2=b.getBoundingClientRect();
@@ -313,8 +326,8 @@ function endGame(){
     gameActive=false;
     bgMusic.pause();
     if(score>highScore){ localStorage.setItem("highScore",score); }
-    document.getElementById("finalScore").innerText = score;
-    document.getElementById("overlay").style.display = "flex";
+    document.getElementById("finalScore").innerText=score;
+    document.getElementById("overlay").style.display="flex";
 }
 </script>
 
