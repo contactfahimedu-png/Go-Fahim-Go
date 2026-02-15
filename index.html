@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Fahim Survival Mobile</title>
+<title>Fahim Sky Survival Mobile</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;}
 body{
@@ -11,16 +11,17 @@ height:100vh;
 overflow:hidden;
 font-family:Segoe UI;
 background: linear-gradient(to bottom, #87ceeb 0%, #f0f8ff 100%);
+position:relative;
 }
 
-/* Airplanes */
 .airplane{
 position:absolute;
 top:0;
-font-size:6vw;
-opacity:0.8;
+font-size:36px;
+opacity:0.7;
 animation:airplaneMove linear infinite;
 }
+
 @keyframes airplaneMove{
 0%{transform:translateX(-100px);}
 100%{transform:translateX(110vw);}
@@ -29,27 +30,34 @@ animation:airplaneMove linear infinite;
 header{
 display:flex;
 justify-content:space-between;
-padding:1vh 3vw;
+padding:10px;
 background:rgba(255,255,255,.3);
 backdrop-filter:blur(5px);
 border-radius:10px;
-font-size:4vw;
+font-size:14px;
 }
 
 #player{
+width:70px;
 position:absolute;
-width:15vw;
-touch-action:none;
 border-radius:50%;
 box-shadow:0 0 15px cyan;
+touch-action: none; /* prevent scrolling on drag */
 }
 
 .enemy, .health, .minus{
 position:absolute;
 border-radius:50%;
+animation-name:fall;
+animation-timing-function:linear;
 }
-.enemy{width:12vw;}
-.health, .minus{width:10vw;}
+.enemy{width:50px;}
+.health, .minus{width:40px;}
+
+@keyframes fall{
+0%{transform:translateY(-100px);}
+100%{transform:translateY(110vh);}
+}
 
 .center{
 position:absolute;
@@ -60,12 +68,12 @@ text-align:center;
 }
 
 button{
-padding:2vh 5vw;
+padding:10px 20px;
 border:none;
 border-radius:30px;
 background:#ff004c;
 color:white;
-font-size:5vw;
+font-size:16px;
 cursor:pointer;
 }
 
@@ -84,18 +92,16 @@ text-align:center;
 #overlay h1, #overlay h2{
 color:white;
 font-weight:bold;
-text-shadow:2px 2px 4px black;
-margin:1vh 0;
-font-size:6vw;
+text-shadow: 2px 2px 4px black;
+margin:5px 0;
 }
 </style>
 </head>
 <body>
 
 <!-- Airplanes -->
-<div class="airplane" style="top:5vh;animation-duration:60s;">🛩️</div>
-<div class="airplane" style="top:15vh;animation-duration:80s;">🛩️</div>
-<div class="airplane" style="top:25vh;animation-duration:100s;">🛩️</div>
+<div class="airplane" style="top:50px;animation-duration:60s;">🛩️</div>
+<div class="airplane" style="top:120px;animation-duration:80s;">🛩️</div>
 
 <header>
 <div>Score: <span id="score">0</span></div>
@@ -122,7 +128,10 @@ font-size:6vw;
 <audio id="bgMusic" src="bgmusic.mp3" loop></audio>
 
 <script>
-let score=0, lives=3, maxLives=5, gameActive=false;
+let score=0;
+let lives=3;
+let maxLives=5;
+let gameActive=false;
 let highScore=localStorage.getItem("highScore")||0;
 document.getElementById("highScore").innerText=highScore;
 
@@ -131,74 +140,47 @@ const explodeSound=document.getElementById("explodeSound");
 const healthSound=document.getElementById("healthSound");
 const minusSound=document.getElementById("minusSound");
 const bgMusic=document.getElementById("bgMusic");
+
 bgMusic.volume=0.3;
+const baseFallDuration=6;
 
-let objects = [];
-const maxEnemies=5, maxHealth=2, maxMinus=1;
-const baseFallSpeed=2;
-
-// -------- PLAYER START POSITION --------
-function setPlayerStart(){
-    player.onload = () => {
-        player.x = window.innerWidth/2 - player.width/2;
-        player.y = window.innerHeight*0.75 - player.height/2;
-        updatePlayerPosition();
-    };
-    if(player.complete){
-        player.x = window.innerWidth/2 - player.width/2;
-        player.y = window.innerHeight*0.75 - player.height/2;
-        updatePlayerPosition();
-    }
-}
-function updatePlayerPosition(){
-    player.style.transform = `translate(${player.x}px, ${player.y}px)`;
-}
-
-// -------- TOUCH DRAG & PC DRAG --------
+// --- Drag to move player on mobile ---
 let dragging=false;
-player.addEventListener('touchstart', e=>{dragging=true; e.preventDefault();});
-player.addEventListener('touchend', e=>{dragging=false;});
-player.addEventListener('touchmove', e=>{
+
+player.addEventListener("touchstart",(e)=>{
+    dragging=true;
+});
+
+player.addEventListener("touchend",(e)=>{
+    dragging=false;
+});
+
+player.addEventListener("touchmove",(e)=>{
     if(!dragging) return;
-    let t=e.touches[0];
-    player.x = t.pageX - player.width/2;
-    player.y = t.pageY - player.height/2;
-    constrainPlayer();
-    updatePlayerPosition();
+    let touch = e.touches[0];
+    player.style.left = (touch.pageX - player.offsetWidth/2) + "px";
+    player.style.top = (touch.pageY - player.offsetHeight/2) + "px";
     e.preventDefault();
 });
-document.addEventListener('mousedown', e=>{dragging=true;});
-document.addEventListener('mouseup', e=>{dragging=false;});
-document.addEventListener('mousemove', e=>{
-    if(!dragging || !gameActive) return;
-    player.x = e.pageX - player.width/2;
-    player.y = e.pageY - player.height/2;
-    constrainPlayer();
-    updatePlayerPosition();
+
+// Also support mouse drag on PC
+player.addEventListener("mousedown",(e)=>{ dragging=true; });
+player.addEventListener("mouseup",(e)=>{ dragging=false; });
+player.addEventListener("mousemove",(e)=>{
+    if(dragging){
+        player.style.left = e.pageX - player.offsetWidth/2 + "px";
+        player.style.top = e.pageY - player.offsetHeight/2 + "px";
+    }
 });
 
-// -------- CONSTRAINT --------
-function constrainPlayer(){
-    player.x = Math.max(0, Math.min(window.innerWidth - player.width, player.x));
-    player.y = Math.max(0, Math.min(window.innerHeight - player.height, player.y));
-}
-
-// -------- SPAWN FUNCTIONS --------
-function spawnEnemy(){
-    if(objects.filter(o=>o.type==='enemy').length >= maxEnemies) return;
-    let el = document.createElement("img");
-    el.src="fahim2.png"; el.className="enemy"; document.body.appendChild(el);
-    objects.push({el,type:'enemy',x:Math.random()*(window.innerWidth-80),y:-80,speed:baseFallSpeed*getSpeedMultiplier()});
-}
-function spawnHealth(){
-    if(objects.filter(o=>o.type==='health').length >= maxHealth) return;
-    let el=document.createElement("img"); el.src="health.png"; el.className="health"; document.body.appendChild(el);
-    objects.push({el,type:'health',x:Math.random()*(window.innerWidth-60),y:-60,speed:baseFallSpeed});
-}
-function spawnMinus(){
-    if(objects.filter(o=>o.type==='minus').length >= maxMinus) return;
-    let el=document.createElement("img"); el.src="minus.png"; el.className="minus"; document.body.appendChild(el);
-    objects.push({el,type:'minus',x:Math.random()*(window.innerWidth-60),y:-60,speed:baseFallSpeed});
+function startGame(){
+    document.getElementById("startScreen").style.display="none";
+    player.style.display="block";
+    gameActive=true;
+    bgMusic.play();
+    spawnEnemy();
+    spawnHealth();
+    spawnMinus();
 }
 
 function getSpeedMultiplier(){
@@ -208,57 +190,133 @@ function getSpeedMultiplier(){
     return 1;
 }
 
-// -------- COLLISION --------
-function checkCollision(a,b){
-    let dx = (a.x + a.width/2) - (b.x + b.offsetWidth/2);
-    let dy = (a.y + a.height/2) - (b.y + b.offsetHeight/2);
-    let distance = Math.sqrt(dx*dx + dy*dy);
-    return distance < (Math.max(a.width,a.height)/2 + Math.max(b.offsetWidth,b.offsetHeight)/2)*0.8;
-}
-
-// -------- LIFE HANDLERS --------
-function gainLife(){if(lives<maxLives){lives++; document.getElementById("lives").innerText=lives; healthSound.play();}}
-function loseLife(){lives--; document.getElementById("lives").innerText=lives; explodeSound.play(); if(lives<=0) endGame();}
-function minusHit(){minusSound.play(); endGame();}
-function endGame(){gameActive=false; bgMusic.pause(); if(score>highScore){localStorage.setItem("highScore",score);} document.getElementById("finalScore").innerText=score; document.getElementById("overlay").style.display="flex";}
-
-// -------- GAME LOOP --------
-function gameLoop(){
+// --- Enemy (-1 life), fewer enemies for mobile ---
+function spawnEnemy(){
     if(!gameActive) return;
+    if(Math.random()<0.6){ // reduce enemy spawn probability
+        let enemy=document.createElement("img");
+        enemy.src="fahim2.png";
+        enemy.className="enemy";
+        enemy.style.left=Math.random()*(window.innerWidth-50)+"px";
+        let duration = baseFallDuration/getSpeedMultiplier();
+        enemy.style.animationDuration = duration+"s";
+        document.body.appendChild(enemy);
 
-    if(Math.random()<0.02) spawnEnemy();
-    if(Math.random()<0.005) spawnHealth();
-    if(Math.random()<0.002) spawnMinus();
+        let check=setInterval(()=>{
+            if(checkCollision(player,enemy)){
+                enemy.remove();
+                clearInterval(check);
+                loseLife();
+            }
+        },10);
 
-    objects.forEach((obj,index)=>{
-        obj.y += obj.speed;
-        obj.el.style.transform = `translate(${obj.x}px, ${obj.y}px)`;
-
-        if(checkCollision(player,obj.el)){
-            if(obj.type==='enemy') loseLife();
-            if(obj.type==='health') gainLife();
-            if(obj.type==='minus') minusHit();
-            obj.el.remove();
-            objects.splice(index,1);
-        } else if(obj.y>window.innerHeight){
-            obj.el.remove();
-            objects.splice(index,1);
-            if(obj.type==='enemy') score++;
-        }
-    });
-
-    document.getElementById("score").innerText=score;
-    requestAnimationFrame(gameLoop);
+        setTimeout(()=>{
+            enemy.remove();
+            clearInterval(check);
+            if(gameActive){
+                score++;
+                document.getElementById("score").innerText=score;
+            }
+        },duration*1000);
+    }
+    setTimeout(spawnEnemy, 1200); // slower spawn for mobile
 }
 
-// -------- START GAME --------
-function startGame(){
-    document.getElementById("startScreen").style.display="none";
-    gameActive=true;
-    setPlayerStart();
-    bgMusic.play();
-    gameLoop();
+// Health (+1 life)
+function spawnHealth(){
+    if(!gameActive) return;
+    let item=document.createElement("img");
+    item.src="health.png";
+    item.className="health";
+    item.style.left=Math.random()*(window.innerWidth-40)+"px";
+    let duration = 5;
+    item.style.animationDuration = duration+"s";
+    document.body.appendChild(item);
+
+    let check=setInterval(()=>{
+        if(checkCollision(player,item)){
+            item.remove();
+            clearInterval(check);
+            gainLife();
+        }
+    },10);
+
+    setTimeout(()=>{
+        item.remove();
+        clearInterval(check);
+    }, duration*1000);
+
+    setTimeout(spawnHealth, 8000);
+}
+
+// Minus (instant game over)
+function spawnMinus(){
+    if(!gameActive) return;
+    let item=document.createElement("img");
+    item.src="minus.png";
+    item.className="minus";
+    item.style.left=Math.random()*(window.innerWidth-40)+"px";
+    let duration = 5;
+    item.style.animationDuration = duration+"s";
+    document.body.appendChild(item);
+
+    let check=setInterval(()=>{
+        if(checkCollision(player,item)){
+            item.remove();
+            clearInterval(check);
+            minusHit();
+        }
+    },10);
+
+    setTimeout(()=>{
+        item.remove();
+        clearInterval(check);
+    }, duration*1000);
+
+    setTimeout(spawnMinus, 12000);
+}
+
+// --- Life functions ---
+function gainLife(){
+    if(lives<maxLives){
+        lives++;
+        document.getElementById("lives").innerText=lives;
+        healthSound.currentTime=0;
+        healthSound.play();
+    }
+}
+
+function loseLife(){
+    lives--;
+    document.getElementById("lives").innerText=lives;
+    explodeSound.play();
+    if(navigator.vibrate){navigator.vibrate(200);}
+    if(lives<=0) endGame();
+}
+
+// Minus = instant game over
+function minusHit(){
+    minusSound.play();
+    if(navigator.vibrate){navigator.vibrate(300);}
+    endGame();
+}
+
+// Collision detection
+function checkCollision(a,b){
+    let r1=a.getBoundingClientRect();
+    let r2=b.getBoundingClientRect();
+    return !(r1.top>r2.bottom||r1.bottom<r2.top||r1.right<r2.left||r1.left>r2.right);
+}
+
+// End game
+function endGame(){
+    gameActive=false;
+    bgMusic.pause();
+    if(score>highScore){ localStorage.setItem("highScore",score); }
+    document.getElementById("finalScore").innerText = score;
+    document.getElementById("overlay").style.display = "flex";
 }
 </script>
+
 </body>
 </html>
